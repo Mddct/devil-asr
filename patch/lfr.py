@@ -25,13 +25,19 @@ class LFR(torch.nn.Module):
                 input_lens: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         B, _, D = input.size()
         n_lfr = torch.ceil(input_lens / self.n)
+        # print(n_lfr)
         # right_padding_nums >= 0
-        right_padding_nums = self.m - (input_lens +
-                                       self.left_padding_nums) % n_lfr
+        prepad_nums = input_lens + self.left_padding_nums
 
+        right_padding_nums = torch.where(
+            self.m >= (prepad_nums - self.n * (n_lfr - 1)),
+            self.m - (prepad_nums - self.n * (n_lfr - 1)),
+            0,
+        )
         T_all = self.left_padding_nums + input_lens + right_padding_nums
-        new_len = torch.where((T_all % self.n) < self.m, T_all / self.n,
-                              T_all / self.n + 1)
+
+        new_len = T_all // self.n
+
         T_all_max = T_all.max().int()
 
         tail_frames_index = (input_lens - 1).view(B, 1, 1).repeat(1, 1,
@@ -56,18 +62,17 @@ class LFR(torch.nn.Module):
             index >= (T_all.unsqueeze(1))) & index_mask
         tail = torch.ones(T_all_max,
                           dtype=input_lens.dtype,
-                          device=input.device).unsqueeze(0).repeat(
-                              B, 1)  # [B, T_all_max]
+                          device=input.device).unsqueeze(0).repeat(B, 1) * (
+                              T_all_max - 1)  # [B, T_all_max]
         indices = torch.where(torch.logical_or(index_mask, tail_index_mask),
                               index, tail)
         input = torch.gather(input, 1, indices.unsqueeze(2).repeat(1, 1, D))
 
         input = input.unfold(1, self.m, step=self.n).transpose(2, 3)
-
         # new len
         return input.reshape(B, -1, D * self.m), new_len
 
 
 # speech, speech_lens = ...
 # speech, speech_lens = LFR(speech, speech_lens)
-# mask = ake_non_pad_mask(speech_lens)
+# mask = make_non_pad_mask(speech_lens)
