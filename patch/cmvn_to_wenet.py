@@ -1,9 +1,9 @@
-import os
 import json
 import sys
+from typing import Tuple, List
 
 
-def load_paraformer_cmvn(cmvn_file):
+def load_paraformer_cmvn(cmvn_file) -> Tuple[List, List]:
     with open(cmvn_file, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
@@ -25,12 +25,19 @@ def load_paraformer_cmvn(cmvn_file):
                 continue
     return means_list, vars_list
 
+
 def to_wenet_cmvn(cmvn_file):
-    mean, std = load_paraformer_cmvn(cmvn_file)
+    means, istd = load_paraformer_cmvn(cmvn_file)
+
+    for i in range(len(means)):
+        # paraformer mean is negative
+        means[i] = means[i] * (-1)
+
     d = {}
-    d['mean_stat'] = mean
-    d['var_stat'] = std
-    d['frame_num'] = 0
+    d['mean_stat'] = means
+    d['istd_stat'] = istd
+    d['frame_num'] = 1
+    d['norm'] = True
 
     return json.dumps(d)
 
