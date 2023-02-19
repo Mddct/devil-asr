@@ -1,5 +1,7 @@
 import json
 import numpy as np
+import math
+
 
 def _load_json_cmvn(json_cmvn_file):
     """ Load the json format cmvn stats file and calculate cmvn
@@ -11,7 +13,7 @@ def _load_json_cmvn(json_cmvn_file):
     with open(json_cmvn_file) as f:
         cmvn_stats = json.load(f)
 
-    if 'norm' in cmvn_stats:
+    if cmvn_stats.get('norm', False):
         assert 'istd_stat' in cmvn_stats
         return np.array([cmvn_stats['mean_stat'], cmvn_stats['istd_stat']])
     means = cmvn_stats['mean_stat']
@@ -25,5 +27,6 @@ def _load_json_cmvn(json_cmvn_file):
         variance[i] = 1.0 / math.sqrt(variance[i])
     cmvn = np.array([means, variance])
     return cmvn
+
 
 _load_json_cmvn('../assets/global_cmvn')
